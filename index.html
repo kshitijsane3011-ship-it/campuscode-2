@@ -1,0 +1,1776 @@
+<!doctype html>
+<!--
+=====================================================================
+  CampusCode: Hackathon Arena (v6 · Obsidian / Chrome / Laser Red)
+  Palette: Obsidian #080808 · Panel #121213 · Chrome #CDCBCA · Laser Red #D41514
+  Fonts:   Bricolage Grotesque (display) · Inter (body) · JetBrains Mono (labels)
+
+  SECTIONS
+    <head>    Fonts, Tailwind CDN + theme tokens, GSAP, Lucide
+    <style>   ===== THEME ===== tokens, surfaces, buttons, motion
+    <body>    #app root, cursor glow, toasts
+    <script>  ===== DATA ===== ===== UTILS ===== ===== AUTH ===== ===== ROUTER =====
+              ===== LANDING ===== ===== AUTH PAGES ===== ===== SHELL ===== ===== PAGES =====
+              ===== FX ===== ===== INIT =====
+
+  RUN      Double-click this file, or host it on GitHub Pages / Vercel.
+  LOGO     Put your logo at ./logo.png. Without it the "///" wordmark shows.
+  EDIT     Colours: the :root block and the tailwind tokens in <head>.
+           Content: the DATA object.
+  LOGIN    Any valid email + 8+ character password. Session in localStorage "cc_session".
+=====================================================================
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>CampusCode</title>
+  <meta name="description" content="CampusCode Hackathon Arena: events, teams, AI tools and certificates for students." />
+  <meta name="theme-color" content="#080808" />
+  <link rel="icon" href="logo.png" onerror="this.remove()" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['"Bricolage Grotesque"', 'Inter', 'sans-serif'],
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace']
+          },
+          colors: {
+            obsidian: '#080808',
+            panel: '#121213',
+            raised: '#1A1A1C',
+            line: '#2E2E31',
+            chrome: '#CDCBCA',
+            muted: '#969496',
+            red: { DEFAULT: '#D41514', hi: '#FF5A52', deep: '#7A0B0A' }
+          }
+        }
+      }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+  <style>
+    /* ===== THEME ===== */
+    :root {
+      --obsidian: 8 8 8;        /* #080808 */
+      --panel: 18 18 19;        /* #121213 */
+      --raised: 26 26 28;       /* #1A1A1C */
+      --line: 46 46 49;         /* #2E2E31 */
+      --chrome: 205 203 202;    /* #CDCBCA */
+      --muted: 150 148 150;     /* #969496 */
+      --red: 212 21 20;         /* #D41514 */
+      --red-hi: 255 90 82;      /* #FF5A52 */
+      --red-deep: 122 11 10;    /* #7A0B0A */
+    }
+    [hidden] { display: none !important; }
+    html { scroll-behavior: smooth; background: #080808; }
+    body {
+      font-family: Inter, system-ui, sans-serif;
+      background: #080808;
+      background-image:
+        radial-gradient(900px 480px at 92% -12%, rgb(var(--red) / .12), transparent 60%),
+        radial-gradient(700px 480px at -10% 40%, rgb(var(--chrome) / .05), transparent 60%);
+      background-attachment: fixed;
+      color: #E9E8E7;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    h1, h2, h3, .display { font-family: "Bricolage Grotesque", Inter, sans-serif; letter-spacing: -0.03em; }
+    .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+    ::selection { background: #D41514; color: #fff; }
+    :focus-visible { outline: 2px solid #FF5A52; outline-offset: 3px; border-radius: 8px; }
+
+    #cursorGlow {
+      position: fixed; left: 0; top: 0; width: 520px; height: 520px; margin: -260px 0 0 -260px;
+      border-radius: 50%; pointer-events: none; z-index: 0;
+      background: radial-gradient(circle, rgb(var(--red) / .10), transparent 60%);
+    }
+    #app { position: relative; z-index: 1; }
+
+    /* Surfaces */
+    .card {
+      position: relative; background: linear-gradient(180deg, #1A1A1C 0%, #121213 100%);
+      border: 1px solid rgb(var(--line)); border-radius: 26px; padding: 1.75rem;
+      box-shadow: inset 0 1px 0 rgb(255 255 255 / .04), 0 20px 50px -28px rgba(0,0,0,.9);
+      transition: transform .45s cubic-bezier(.2,.8,.2,1), box-shadow .45s ease, border-color .3s;
+    }
+    .card.lift:hover { transform: translateY(-3px); border-color: #4A4A4F; box-shadow: inset 0 1px 0 rgb(255 255 255 / .05), 0 30px 60px -30px rgba(0,0,0,.95); }
+    .card-ink { background: #0C0C0D; border-color: #232326; }
+    .card-red { background: linear-gradient(160deg, #D41514 0%, #7A0B0A 100%); border-color: #7A0B0A; color: #fff; }
+
+    /* Buttons */
+    .btn {
+      position: relative; display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+      height: 2.9rem; padding: 0 1.4rem; border-radius: 999px; overflow: hidden;
+      font-family: "Bricolage Grotesque", Inter, sans-serif; font-weight: 700; font-size: .95rem; letter-spacing: -.01em;
+      white-space: nowrap; cursor: pointer; border: 1px solid transparent;
+      transition: transform .25s cubic-bezier(.2,.8,.2,1), background-color .25s, color .25s, box-shadow .3s, border-color .25s;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn:active { transform: scale(.97); }
+    .btn:disabled { opacity: .5; pointer-events: none; }
+    .btn-red { background: #D41514; color: #fff; box-shadow: 0 14px 30px -14px rgba(212,21,20,.85); }
+    .btn-red:hover { background: #7A0B0A; box-shadow: 0 18px 36px -14px rgba(212,21,20,.9); }
+    .btn-chrome { background: linear-gradient(180deg, #E9E8E7, #CDCBCA 55%, #A6A4A3); color: #080808; box-shadow: 0 10px 26px -12px rgba(205,203,202,.45), inset 0 1px 0 #fff; }
+    .btn-chrome:hover { box-shadow: 0 16px 34px -14px rgba(205,203,202,.6), inset 0 1px 0 #fff; }
+    .btn-line { background: transparent; color: #E9E8E7; border-color: #3A3A3F; }
+    .btn-line:hover { border-color: #CDCBCA; background: rgb(255 255 255 / .04); }
+    .btn-sm { height: 2.4rem; padding: 0 1rem; font-size: .85rem; }
+    .btn-lg { height: 3.4rem; padding: 0 2rem; font-size: 1.05rem; }
+
+    /* Inputs */
+    .label { display: block; font-family: "JetBrains Mono", monospace; font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #969496; margin-bottom: .5rem; }
+    .field {
+      width: 100%; height: 3.1rem; border-radius: 16px; border: 1px solid #2E2E31; background: #0A0A0B;
+      padding: 0 1.1rem; color: #F2F1F0; font-size: .97rem;
+      transition: border-color .2s, box-shadow .2s, background-color .2s;
+    }
+    textarea.field { height: auto; min-height: 7rem; padding: .9rem 1.1rem; resize: vertical; }
+    .field::placeholder { color: #5C5B5E; }
+    .field:hover { border-color: #47474C; }
+    .field:focus { outline: none; border-color: #D41514; box-shadow: 0 0 0 4px rgba(212,21,20,.18); background: #000; }
+    .field[aria-invalid="true"] { border-color: #FF5A52; }
+    select.field option { background: #121213; color: #F2F1F0; }
+
+    /* Chips */
+    .chip { display: inline-flex; align-items: center; gap: .4rem; border-radius: 999px; padding: .3rem .75rem; font-family: "JetBrains Mono", monospace; font-size: .7rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+    .c-red { background: rgba(212,21,20,.16); color: #FF5A52; }
+    .c-chrome { background: #CDCBCA; color: #080808; }
+    .c-line { background: #1F1F22; color: #969496; }
+    .c-ink { background: #E9E8E7; color: #080808; }
+    .dot { width: .5rem; height: .5rem; border-radius: 999px; background: #D41514; animation: pulse 1.6s infinite; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(212,21,20,.6); } 100% { box-shadow: 0 0 0 10px rgba(212,21,20,0); } }
+
+    /* Meters */
+    .seg { height: .55rem; flex: 1; border-radius: 999px; background: #222225; }
+    .seg.on { background: linear-gradient(90deg, #CDCBCA, #F2F1F0); }
+    .seg.on.hot { background: linear-gradient(90deg, #7A0B0A, #D41514, #FF5A52); }
+    .bar { height: .65rem; border-radius: 999px; background: #222225; overflow: hidden; }
+    .bar > i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #7A0B0A, #D41514, #FF5A52); }
+
+    /* Display type */
+    .chrome-text { background: linear-gradient(180deg, #FFFFFF 0%, #CDCBCA 60%, #8A8988 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .hero-title { font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; font-size: clamp(3.2rem, 9vw, 7.5rem); line-height: .92; letter-spacing: -.045em; }
+    .hl { background: linear-gradient(120deg, #FF5A52, #D41514); color: #fff; padding: 0 .18em; border-radius: .14em; }
+    .big-num { font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; font-size: clamp(3rem, 6vw, 5rem); letter-spacing: -.05em; line-height: .9; font-variant-numeric: tabular-nums; }
+
+    /* Sidebar */
+    .rail {
+      position: fixed; top: 0; bottom: 0; left: 0; width: 17rem; z-index: 60;
+      display: flex; flex-direction: column; padding: 1.5rem 1.1rem;
+      background: #050505; border-right: 1px solid #2E2E31; color: #E9E8E7;
+      transform: translateX(-105%); transition: transform .5s cubic-bezier(.2,.8,.2,1);
+    }
+    .rail.open { transform: translateX(0); }
+    @media (min-width: 1024px) { .rail { transform: none; } }
+    .rail-link {
+      display: flex; align-items: center; gap: .85rem; height: 2.7rem; padding: 0 .9rem; border-radius: 14px;
+      color: #969496; font-size: .92rem; font-weight: 500; transition: background-color .2s, color .2s, transform .25s;
+    }
+    .rail-link i { transition: transform .3s cubic-bezier(.2,.8,.2,1); }
+    .rail-link:hover { color: #fff; background: #121213; transform: translateX(3px); }
+    .rail-link:hover i { transform: scale(1.12); }
+    .rail-link.active { background: #1A1A1C; color: #fff; font-weight: 600; box-shadow: inset 3px 0 0 #D41514; }
+    .rail-scroll { overflow-y: auto; scrollbar-width: none; }
+    .rail-scroll::-webkit-scrollbar { display: none; }
+
+    /* Tab bar */
+    .tabbar {
+      position: fixed; left: 1rem; right: 1rem; bottom: 1rem; z-index: 55;
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: .3rem; padding: .45rem;
+      background: rgba(12,12,13,.95); border: 1px solid #2E2E31; border-radius: 24px;
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 24px 50px -18px rgba(0,0,0,.9);
+    }
+    .tabbar a { display: flex; flex-direction: column; align-items: center; gap: .2rem; padding: .5rem 0; border-radius: 18px; color: #969496; font-family: "JetBrains Mono", monospace; font-size: .6rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+    .tabbar a.active { background: #D41514; color: #fff; }
+    @media (min-width: 1024px) { .tabbar { display: none; } }
+
+    .topbar { background: rgba(8,8,8,.8); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid #2E2E31; }
+
+    /* Logo: chrome pill with a red "///" mark */
+    .logo { display: inline-flex; align-items: center; gap: .65rem; }
+    .logo img { height: 2rem; width: auto; }
+    .logo-mark {
+      display: inline-grid; place-items: center; height: 2.25rem; padding: 0 .55rem; border-radius: 12px;
+      background: linear-gradient(180deg, #E9E8E7, #CDCBCA); color: #D41514;
+      font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: .95rem; letter-spacing: -.12em;
+      box-shadow: inset 0 1px 0 #fff, 0 8px 22px -10px rgba(205,203,202,.5);
+    }
+    .logo-text { font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; font-size: 1.05rem; letter-spacing: -.02em; line-height: 1; color: #F2F1F0; }
+    .logo-text small { display: block; font-family: "JetBrains Mono", monospace; font-size: .55rem; font-weight: 700; letter-spacing: .18em; color: #969496; margin-top: .3rem; }
+
+    /* Ticker */
+    .ticker { overflow: hidden; white-space: nowrap; border-block: 1px solid #2E2E31; background: #0C0C0D; }
+    .ticker-track { display: inline-flex; gap: 3rem; padding: .9rem 0; animation: tick 28s linear infinite; font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: .8rem; text-transform: uppercase; letter-spacing: .12em; color: #CDCBCA; }
+    @keyframes tick { to { transform: translateX(-50%); } }
+
+    .reveal { opacity: 0; transform: translateY(24px); transition: opacity .8s cubic-bezier(.2,.8,.2,1), transform .8s cubic-bezier(.2,.8,.2,1); }
+    .reveal.in { opacity: 1; transform: none; }
+
+    .skel { border-radius: 26px; background: linear-gradient(90deg, #141415 25%, #1F1F22 50%, #141415 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite linear; }
+    @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+    .toast { animation: toastIn .45s cubic-bezier(.2,.8,.2,1) both; }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(12px) scale(.97); } to { opacity: 1; transform: none; } }
+
+    @media (hover: none) { #cursorGlow { display: none; } }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+      .reveal { opacity: 1; transform: none; }
+      .btn:hover, .card.lift:hover, .rail-link:hover { transform: none; }
+      #cursorGlow { display: none; }
+    }
+  </style>
+</head>
+
+<body>
+<div id="cursorGlow" aria-hidden="true"></div>
+<div id="toasts" class="pointer-events-none fixed bottom-24 right-4 z-[80] flex w-[calc(100%-2rem)] max-w-sm flex-col gap-2 sm:bottom-6 sm:right-6 sm:w-auto" aria-live="polite"></div>
+<div id="scrim" hidden class="fixed inset-0 z-50 bg-black/70 backdrop-blur-[2px] lg:hidden"></div>
+<div id="app" class="min-h-screen"></div>
+
+<script>
+/* ===== DATA ===== Edit everything the UI shows here. */
+const DATA = {
+  config: { latencyMs: 500, simulateError: false },
+
+  user: {
+    name: 'Aarav Sharma', email: 'aarav.sharma@dbatu.ac.in', college: 'DBATU',
+    branch: 'Electronics & Telecommunication', year: 'Third year', handle: 'aarav.codes',
+    level: 7, xp: 2480, xpNext: 3000
+  },
+  branches: ['Electronics & Telecommunication', 'Computer Engineering', 'Information Technology', 'Mechanical', 'Civil', 'Other'],
+  years: ['First year', 'Second year', 'Third year', 'Final year'],
+
+  nav: [
+    { slug: 'overview', label: 'Overview', icon: 'layout-dashboard' },
+    { slug: 'events', label: 'Events', icon: 'calendar' },
+    { slug: 'my-events', label: 'My Events', icon: 'calendar-check', count: 2 },
+    { slug: 'hackmate', label: 'HackMate AI', icon: 'users' },
+    { slug: 'ideacheck', label: 'IdeaCheck AI', icon: 'lightbulb' },
+    { slug: 'certificates', label: 'Certificates', icon: 'award' },
+    { slug: 'digital-card', label: 'Digital Card', icon: 'id-card' },
+    { slug: 'rulebot', label: 'RuleBot AI', icon: 'bot' },
+    { slug: 'student-guide', label: 'Student Guide', icon: 'book-open' },
+    { slug: 'communication', label: 'Official Communication', icon: 'send' },
+    { slug: 'notifications', label: 'Notifications', icon: 'bell', count: 2 },
+    { slug: 'help', label: 'Help & Support', icon: 'life-buoy' },
+    { slug: 'profile', label: 'Profile', icon: 'user' },
+    { slug: 'settings', label: 'Settings', icon: 'settings' }
+  ],
+  tabs: ['overview', 'events', 'hackmate', 'profile'],
+
+  ticker: ['Arena Round · Sat 14 Nov', 'Build in 48 hours', 'Verified certificates', 'Find your team', 'Ship something real'],
+
+  stats: [
+    { label: 'Build progress', value: 0, suffix: '/5', hint: 'Milestones complete' },
+    { label: 'Team rank', value: 4, prefix: '#', hint: 'Out of 32 teams' },
+    { label: 'Events joined', value: 3, hint: '1 upcoming this week' },
+    { label: 'Certificates', value: 6, hint: 'Earned this term' }
+  ],
+  teams: [
+    { name: 'Harbour', track: 'AI Innovation', status: 'Building', tone: 'c-line', done: 3 },
+    { name: 'Stack Crew', track: 'Web3 Sprint', status: 'Submitted', tone: 'c-chrome', done: 10 },
+    { name: 'Quanta Loop', track: 'IoT Build Night', status: 'Reviewing', tone: 'c-red', done: 9, live: true }
+  ],
+  leaderboard: [
+    { name: 'Byte Harbour', score: 88 }, { name: 'Stack Crew', score: 81 }, { name: 'Lumen Forge', score: 77 },
+    { name: 'Quanta Loop', score: 74 }, { name: 'Kestrel Labs', score: 69 }
+  ],
+  activity: [
+    { who: 'Stack Crew', text: 'submitted their project.', time: '12 min ago' },
+    { who: 'Stack', text: 'reached 7 of 10 build milestones.', time: '1 hour ago' },
+    { who: 'Harbour', text: 'joined the AI Innovation track.', time: '3 hours ago' },
+    { who: 'Quanta Loop', text: 'asked a rulebook question.', time: 'Yesterday' }
+  ],
+  milestones: ['Idea locked', 'Team formed', 'Prototype', 'Demo video', 'Submission'],
+  milestonesDone: 0,
+
+  events: [
+    { id: 'e1', title: 'Campus Hackathon 2026: Arena Round', date: 'Sat, 14 Nov · 9:00 AM', mode: 'On campus', tags: ['Open track', '48 hours'], seats: 42, registered: true },
+    { id: 'e2', title: 'AI Innovation Track', date: 'Mon, 16 Nov · 6:00 PM', mode: 'Online', tags: ['AI', 'Mentors'], seats: 120, registered: true },
+    { id: 'e3', title: 'Web3 Sprint', date: 'Thu, 19 Nov · 4:00 PM', mode: 'Online', tags: ['Web3', 'Solidity'], seats: 60, registered: false },
+    { id: 'e4', title: 'IoT Build Night', date: 'Fri, 27 Nov · 7:00 PM', mode: 'On campus', tags: ['IoT', 'Hardware'], seats: 18, registered: false },
+    { id: 'e5', title: 'Women in Tech Circle', date: 'Sun, 30 Nov · 11:00 AM', mode: 'Online', tags: ['Community'], seats: 80, registered: false }
+  ],
+  certificates: [
+    { title: 'Arena Round Participant', issuer: 'CampusCode · Hackathon 2025', date: '12 Mar 2026', id: 'CC-25-0412' },
+    { title: 'Python for Data Science', issuer: 'CampusCode Academy', date: '28 Jan 2026', id: 'CC-AC-0198' },
+    { title: 'Git & GitHub Workflows', issuer: 'CampusCode Academy', date: '04 Dec 2025', id: 'CC-AC-0055' }
+  ],
+  teammates: [
+    { name: 'Meera Joshi', role: 'ML Engineer', skills: ['Python', 'PyTorch', 'NLP'], match: 94, branch: 'CSE' },
+    { name: 'Rohan Patil', role: 'Frontend', skills: ['React', 'Tailwind', 'UI'], match: 89, branch: 'IT' },
+    { name: 'Sneha Kulkarni', role: 'Hardware', skills: ['Embedded C', 'PCB', 'IoT'], match: 81, branch: 'Mechanical' },
+    { name: 'Vikram Desai', role: 'Backend', skills: ['Node.js', 'PostgreSQL', 'APIs'], match: 77, branch: 'CSE' }
+  ],
+  announcements: [
+    { cat: 'Official', title: 'Arena Round rules are now published', body: 'Teams of up to four, 48-hour build window, judged on impact, feasibility and polish.', time: '2 hours ago' },
+    { cat: 'Schedule', title: 'Submission deadline moved to 10 PM', body: 'The final submission window closes at 10:00 PM on Sunday. Check the timeline in the Student Guide.', time: 'Yesterday' },
+    { cat: 'Rulebook', title: 'Use of open-source AI APIs', body: 'Allowed, provided you cite the API and never share API keys in your repository.', time: '2 days ago' }
+  ],
+  notifications: [
+    { text: 'Arena Round check-in opens at 8:30 AM on Saturday.', time: '10 min ago', read: false },
+    { text: 'Vikram Desai passed you on the leaderboard.', time: '1 hour ago', read: false },
+    { text: 'Your IdeaCheck report for "Campus Parking Sensor" is ready.', time: 'Yesterday', read: true }
+  ],
+  faqs: [
+    { q: 'How do I form a team?', a: 'Open HackMate AI, pick the skills you need, and send an invite. Teams can have up to four members.' },
+    { q: 'Where do I see my certificate?', a: 'Every certificate appears under Certificates after the organisers verify your participation.' },
+    { q: 'Can I change my team after registering?', a: 'Yes, until the team lock date shown in the Student Guide. Contact the event coordinator after that.' }
+  ],
+  guide: [
+    { title: 'Before the event', body: 'Complete your profile, review the rulebook and join the event Discord from the Official Communication page.' },
+    { title: 'During the build', body: 'Log milestones as you complete them. Each milestone updates your Overview progress and team pipeline.' },
+    { title: 'Submission', body: 'Submit a repository, a demo video under 3 minutes and a 150-word summary. Late submissions are not judged.' }
+  ],
+  rulebot: [
+    { match: ['team', 'member', 'size'], answer: 'Teams can have up to four members. Each member must be registered on CampusCode before the team lock date.' },
+    { match: ['submit', 'submission', 'deadline'], answer: 'Submissions close at 10:00 PM on Sunday. Upload your repository, demo video and summary from the event page.' },
+    { match: ['prize', 'reward', 'win'], answer: 'Winners receive certificates, digital badges and mentorship sessions. Cash prizes are announced in the final round.' },
+    { match: ['ai', 'api', 'open source', 'tool'], answer: 'Open-source AI APIs are allowed. Cite the API in your README and never commit API keys.' }
+  ],
+  badges: [
+    { name: 'First build', icon: 'hammer', earned: true },
+    { name: 'Team player', icon: 'users', earned: true },
+    { name: 'Idea sharp', icon: 'lightbulb', earned: true },
+    { name: 'Night owl', icon: 'moon', earned: false },
+    { name: 'Demo day', icon: 'presentation', earned: false },
+    { name: 'Top 10', icon: 'trophy', earned: false }
+  ],
+  settings: { notifications: { sprint: true, digest: true, mentions: false, announcements: true } }
+};
+
+/* ===== UTILS ===== */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const motionOn = () => typeof window.gsap !== 'undefined' && !reduceMotion();
+const refreshIcons = () => { if (window.lucide) window.lucide.createIcons(); };
+const initials = (n) => n.split(' ').filter(Boolean).map((p) => p[0]).slice(0, 2).join('').toUpperCase();
+const firstName = () => DATA.user.name.split(' ')[0];
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const app = () => $('#app');
+
+function countUp(el, to) {
+  if (!motionOn()) { el.textContent = Math.round(to).toLocaleString(); return; }
+  const o = { v: 0 };
+  gsap.to(o, { v: to, duration: 1.4, ease: 'power3.out', onUpdate: () => { el.textContent = Math.round(o.v).toLocaleString(); } });
+}
+
+function animateBars(root) {
+  $$('[data-width]', root).forEach((el, i) => {
+    const t = el.dataset.width + '%';
+    if (motionOn()) gsap.to(el, { width: t, duration: 1.1, ease: 'power3.out', delay: 0.1 + i * 0.08 });
+    else el.style.width = t;
+  });
+  if (motionOn()) gsap.fromTo($$('[data-seg]', root), { scaleX: 0.2, opacity: 0.3 }, { scaleX: 1, opacity: 1, duration: 0.35, stagger: 0.03, ease: 'power2.out', transformOrigin: 'left' });
+}
+
+function tiltCards(root = document) {
+  if (!motionOn() || matchMedia('(hover: none)').matches) return;
+  $$('.tilt', root).forEach((el) => {
+    if (el.dataset.tilt) return;
+    el.dataset.tilt = '1';
+    el.addEventListener('mousemove', (e) => {
+      const r = el.getBoundingClientRect();
+      gsap.to(el, { rotateY: ((e.clientX - r.left) / r.width - 0.5) * 6, rotateX: -((e.clientY - r.top) / r.height - 0.5) * 6, transformPerspective: 1000, duration: 0.4, ease: 'power2.out' });
+    });
+    el.addEventListener('mouseleave', () => gsap.to(el, { rotateX: 0, rotateY: 0, duration: 0.7, ease: 'elastic.out(1, .5)' }));
+  });
+}
+
+function magnetize(root = document) {
+  if (!motionOn() || matchMedia('(hover: none)').matches) return;
+  $$('.btn', root).forEach((el) => {
+    if (el.dataset.mag) return;
+    el.dataset.mag = '1';
+    el.addEventListener('mousemove', (e) => {
+      const r = el.getBoundingClientRect();
+      gsap.to(el, { x: (e.clientX - r.left - r.width / 2) * 0.14, y: (e.clientY - r.top - r.height / 2) * 0.22, duration: 0.3, ease: 'power2.out' });
+    });
+    el.addEventListener('mouseleave', () => gsap.to(el, { x: 0, y: 0, duration: 0.6, ease: 'elastic.out(1, .4)' }));
+  });
+}
+
+function toast(msg, tone = 'success') {
+  const el = document.createElement('div');
+  el.className = 'toast card pointer-events-auto flex items-center gap-3 !rounded-2xl !p-4 text-sm font-semibold shadow-[0_20px_40px_-20px_rgba(0,0,0,.9)]';
+  el.setAttribute('role', 'status');
+  el.innerHTML = `<i data-lucide="${tone === 'error' ? 'circle-alert' : 'circle-check'}" class="h-4 w-4 shrink-0 ${tone === 'error' ? 'text-[#FF5A52]' : 'text-chrome'}" aria-hidden="true"></i><span>${esc(msg)}</span>`;
+  $('#toasts').appendChild(el);
+  refreshIcons();
+  setTimeout(() => {
+    if (motionOn()) gsap.to(el, { opacity: 0, y: 8, duration: 0.3, onComplete: () => el.remove() });
+    else el.remove();
+  }, 3000);
+}
+
+function emptyBox(icon, title, desc, action = '') {
+  return `<div class="col-span-full flex flex-col items-center gap-3 rounded-[26px] border border-dashed border-[#3A3A3F] p-12 text-center">
+    <span class="grid h-14 w-14 place-items-center rounded-2xl bg-red/15"><i data-lucide="${icon}" class="h-6 w-6 text-[#FF5A52]" aria-hidden="true"></i></span>
+    <h3 class="display text-xl font-bold">${esc(title)}</h3>
+    <p class="max-w-sm text-sm text-muted">${esc(desc)}</p>${action}
+  </div>`;
+}
+
+function errorBox(msg) {
+  return `<div role="alert" class="card flex flex-col items-center gap-3 text-center">
+    <i data-lucide="circle-alert" class="h-7 w-7 text-[#FF5A52]" aria-hidden="true"></i>
+    <h2 class="display text-xl font-bold">Something went wrong</h2>
+    <p class="max-w-sm text-sm text-muted">${esc(msg)}</p>
+    <button type="button" class="btn btn-line btn-sm" data-retry>Try again</button>
+  </div>`;
+}
+
+function skeleton() {
+  return `<div class="space-y-6" aria-busy="true" aria-label="Loading">
+    <div class="skel h-20 w-3/4"></div>
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">${'<div class="skel h-44"></div>'.repeat(4)}</div>
+    <div class="grid gap-6 lg:grid-cols-3"><div class="skel h-80 lg:col-span-2"></div><div class="skel h-80"></div></div>
+  </div>`;
+}
+
+function setFieldError(input, msg) {
+  const id = `${input.id}-err`;
+  let err = document.getElementById(id);
+  if (!msg) {
+    input.removeAttribute('aria-invalid');
+    input.removeAttribute('aria-describedby');
+    if (err) err.remove();
+    return false;
+  }
+  input.setAttribute('aria-invalid', 'true');
+  input.setAttribute('aria-describedby', id);
+  if (!err) {
+    err = document.createElement('p');
+    err.id = id;
+    err.setAttribute('role', 'alert');
+    err.className = 'mt-2 text-xs font-semibold text-[#FF5A52]';
+    input.parentElement.appendChild(err);
+  }
+  err.textContent = msg;
+  return true;
+}
+
+function bindValidation(form, rules) {
+  const check = (name) => !setFieldError(form.elements.namedItem(name), rules[name](form.elements.namedItem(name).value));
+  Object.keys(rules).forEach((name) => {
+    const el = form.elements.namedItem(name);
+    el.addEventListener('blur', () => { el.dataset.touched = '1'; check(name); });
+    el.addEventListener('input', () => { if (el.dataset.touched) check(name); });
+    el.addEventListener('change', () => { if (el.dataset.touched) check(name); });
+  });
+  return () => {
+    let ok = true, first = null;
+    Object.keys(rules).forEach((name) => {
+      form.elements.namedItem(name).dataset.touched = '1';
+      if (!check(name)) { ok = false; first = first || form.elements.namedItem(name); }
+    });
+    if (first) first.focus();
+    return ok;
+  };
+}
+
+const eyeIcon = (show) => `<i data-lucide="${show ? 'eye-off' : 'eye'}" class="h-4 w-4" aria-hidden="true"></i>`;
+
+function setupPasswordToggles(root = document) {
+  $$('[data-toggle-pw]', root).forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById(btn.dataset.togglePw);
+      const reveal = input.type === 'password';
+      input.type = reveal ? 'text' : 'password';
+      btn.setAttribute('aria-label', reveal ? 'Hide password' : 'Show password');
+      btn.innerHTML = eyeIcon(reveal);
+      refreshIcons();
+    });
+  });
+}
+
+async function withLoading(btn, label, task) {
+  const original = btn.innerHTML;
+  btn.disabled = true;
+  btn.setAttribute('aria-busy', 'true');
+  btn.innerHTML = `<i data-lucide="loader-circle" class="h-4 w-4 animate-spin" aria-hidden="true"></i><span>${label}</span>`;
+  refreshIcons();
+  try {
+    await sleep(motionOn() ? 700 : 100);
+    await task();
+  } catch (err) {
+    toast(err.message || 'Something went wrong. Please try again.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.removeAttribute('aria-busy');
+    btn.innerHTML = original;
+    refreshIcons();
+  }
+}
+
+/* ===== AUTH =====
+   Demo auth. Replace setSession and the submit handlers with your real API. */
+const SESSION_KEY = 'cc_session';
+const authed = () => { try { return localStorage.getItem(SESSION_KEY) === '1'; } catch (e) { return false; } };
+function setSession(on) { try { on ? localStorage.setItem(SESSION_KEY, '1') : localStorage.removeItem(SESSION_KEY); } catch (e) {} }
+function logout() { setSession(false); toast('You have been logged out.'); go('#/login'); }
+
+/* ===== ROUTER ===== */
+const PAGE_ORDER = DATA.nav.map((n) => n.slug);
+let shellMounted = false;
+let pageToken = 0;
+let lastPage = null;
+
+const go = (hash) => { if (location.hash !== hash) location.hash = hash; else route(); };
+
+function route() {
+  const [a, b] = (location.hash || '').replace(/^#\/?/, '').split('/').filter(Boolean);
+  if (!a || !['landing', 'login', 'register', 'dashboard'].includes(a)) return go('#/landing');
+  if (a !== 'dashboard') { shellMounted = false; lastPage = null; }
+  if (a === 'landing') return renderLanding();
+  if (a === 'login') return authed() ? go('#/dashboard/overview') : renderLogin();
+  if (a === 'register') return authed() ? go('#/dashboard/overview') : renderRegister();
+  if (!authed()) return go('#/login');
+  if (!b || !PAGE_ORDER.includes(b)) return go('#/dashboard/overview');
+  renderDashboard(b);
+}
+
+function enter(html) {
+  app().innerHTML = html;
+  refreshIcons();
+  window.scrollTo(0, 0);
+  if (motionOn()) gsap.fromTo(app(), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out', clearProps: 'transform' });
+}
+
+/* ===== LOGO =====
+   Shows ./logo.png when present, otherwise the "///" wordmark. */
+const logo = () => `
+  <span class="logo" role="img" aria-label="CampusCode">
+    <img src="logo.png" alt="" onerror="this.remove()" />
+    <span class="logo-mark" aria-hidden="true">///</span>
+    <span class="logo-text">CAMPUSCODE<small>HACKATHON ARENA</small></span>
+  </span>`;
+
+/* ===== LANDING ===== */
+const SNIPPET = `def two_sum(nums, target):
+    seen = {}
+    for i, n in enumerate(nums):
+        if target - n in seen:
+            return [seen[target - n], i]
+        seen[n] = i`;
+
+function landingHTML() {
+  const features = [
+    { icon: 'code-xml', title: 'Branch challenges', text: 'Problems tuned to your syllabus, from circuits to data structures.' },
+    { icon: 'users', title: 'AI team formation', text: 'HackMate AI matches you with teammates who fill the gaps in your stack.' },
+    { icon: 'lightbulb', title: 'Pressure-test ideas', text: 'IdeaCheck AI scores novelty, feasibility and impact before you build.' },
+    { icon: 'bot', title: 'Rulebook on demand', text: 'RuleBot answers event rules instantly, sourced from official notices.' },
+    { icon: 'award', title: 'Verified certificates', text: 'Every participation and course earns a shareable, verifiable certificate.' },
+    { icon: 'id-card', title: 'Digital card', text: 'Share your skills, badges and profile with recruiters in one link.' }
+  ];
+  const stats = [
+    { to: 12400, suffix: '+', label: 'Students' },
+    { to: 480, suffix: '+', label: 'Colleges' },
+    { to: 92, suffix: '%', label: 'Teams finish' },
+    { to: 2100, suffix: '+', label: 'Projects shipped' }
+  ];
+  const quotes = [
+    { q: 'I went from copy-pasting to actually solving problems in one semester.', n: 'Priya M.', r: 'CSE, third year' },
+    { q: 'HackMate matched us with a frontend dev and an ML engineer. We placed top 3.', n: 'Rahul K.', r: 'ECE, final year' }
+  ];
+  const tick = [...DATA.ticker, ...DATA.ticker].map((t) => `<span>${esc(t)} <span class="text-[#FF5A52]">✸</span></span>`).join('');
+
+  return `
+  <header class="topbar sticky top-0 z-40">
+    <div class="mx-auto flex h-18 max-w-7xl items-center justify-between px-5 py-4 sm:px-8">
+      <a href="#/landing" aria-label="CampusCode home">${logo()}</a>
+      <nav aria-label="Primary" class="mono hidden items-center gap-8 text-xs font-bold uppercase tracking-wider text-muted md:flex">
+        <a href="#features" class="hover:text-white">Features</a>
+        <a href="#impact" class="hover:text-white">Impact</a>
+        <a href="#stories" class="hover:text-white">Stories</a>
+      </nav>
+      <div class="flex items-center gap-2">
+        <a href="#/login" class="btn btn-line btn-sm">Login</a>
+        <a href="#/register" class="btn btn-red btn-sm">Register</a>
+      </div>
+    </div>
+  </header>
+
+  <section class="mx-auto max-w-7xl px-5 pb-20 pt-12 sm:px-8 lg:pt-20">
+    <div class="grid items-end gap-10 lg:grid-cols-12">
+      <div class="lg:col-span-8">
+        <p class="hero-in chip c-red mb-6"><span class="dot"></span>Arena Round starts Saturday</p>
+        <h1 class="hero-title hero-in">Build fast.<br/>Win the <span class="hl">arena</span>.</h1>
+      </div>
+      <div class="hero-in lg:col-span-4">
+        <p class="text-lg leading-relaxed text-muted">CampusCode is the hackathon arena for students. Find teammates, validate ideas, track your build and earn certificates in one place.</p>
+        <div class="mt-7 flex flex-wrap gap-3">
+          <a href="#/register" class="btn btn-chrome btn-lg">Get started <i data-lucide="arrow-right" class="h-4 w-4" aria-hidden="true"></i></a>
+          <a href="#/dashboard/events" class="btn btn-line btn-lg">Explore challenges</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="ticker"><div class="ticker-track">${tick}</div></div>
+
+  <section class="mx-auto grid max-w-7xl gap-5 px-5 py-20 sm:px-8 lg:grid-cols-12" id="features">
+    <div class="reveal lg:col-span-5">
+      <p class="mono text-xs font-bold uppercase tracking-widest text-[#FF5A52]">01 — Features</p>
+      <h2 class="display mt-4 text-4xl font-bold leading-[1.02] sm:text-6xl chrome-text">Everything a campus hacker needs.</h2>
+      <p class="mt-5 text-muted">One arena to learn, team up, build and get recognised.</p>
+    </div>
+    <div class="grid gap-5 sm:grid-cols-2 lg:col-span-7">
+      ${features.map((f, i) => `
+        <article class="card lift reveal ${i === 0 ? 'sm:col-span-2 card-ink' : ''}" style="transition-delay:${i * 60}ms">
+          <span class="grid h-12 w-12 place-items-center rounded-2xl ${i === 0 ? 'bg-red' : 'bg-raised'}"><i data-lucide="${f.icon}" class="h-5 w-5 ${i === 0 ? 'text-white' : 'text-chrome'}" aria-hidden="true"></i></span>
+          <h3 class="display mt-7 text-2xl font-bold">${f.title}</h3>
+          <p class="mt-2 text-sm leading-relaxed text-muted">${f.text}</p>
+        </article>`).join('')}
+    </div>
+  </section>
+
+  <section id="impact" class="mx-auto max-w-7xl px-5 sm:px-8">
+    <div class="card-ink reveal grid grid-cols-2 gap-px overflow-hidden rounded-[30px] bg-line p-0 md:grid-cols-4">
+      ${stats.map((s) => `
+        <div class="bg-[#0C0C0D] p-8 md:p-10">
+          <p class="big-num chrome-text"><span data-count="${s.to}">0</span><span class="text-red">${s.suffix}</span></p>
+          <p class="mono mt-4 text-xs uppercase tracking-wider text-muted">${s.label}</p>
+        </div>`).join('')}
+    </div>
+  </section>
+
+  <section id="stories" class="mx-auto grid max-w-7xl gap-5 px-5 py-24 sm:px-8 md:grid-cols-2">
+    ${quotes.map((t, i) => `
+      <figure class="card lift reveal p-10" style="transition-delay:${i * 90}ms">
+        <span class="display text-6xl font-bold leading-none text-red">“</span>
+        <blockquote class="display mt-2 text-2xl font-semibold leading-snug">${t.q}</blockquote>
+        <figcaption class="mt-8"><p class="font-semibold">${t.n}</p><p class="mono mt-1 text-xs text-muted">${t.r}</p></figcaption>
+      </figure>`).join('')}
+  </section>
+
+  <section class="mx-auto max-w-7xl px-5 pb-24 sm:px-8">
+    <div class="reveal card-red relative overflow-hidden rounded-[30px] p-10 sm:p-16">
+      <div class="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-white/10 blur-3xl" aria-hidden="true"></div>
+      <h2 class="display relative max-w-3xl text-4xl font-bold leading-[1.02] sm:text-6xl">Your batch is already building.</h2>
+      <p class="relative mt-5 max-w-md text-white/80">Join in under a minute and climb the leaderboard with your classmates.</p>
+      <a href="#/register" class="btn btn-chrome btn-lg relative mt-8">Get started</a>
+    </div>
+  </section>
+
+  <footer class="border-t border-line">
+    <div class="mx-auto flex max-w-7xl flex-col items-center justify-between gap-5 px-5 py-10 text-sm text-muted sm:flex-row sm:px-8">
+      ${logo()}
+      <nav aria-label="Footer" class="flex gap-6">
+        <a href="#/landing" class="hover:text-white">About</a>
+        <a href="#/landing" class="hover:text-white">Privacy</a>
+        <a href="#/dashboard/help" class="hover:text-white">Contact</a>
+      </nav>
+      <p class="mono text-xs">© 2026 CAMPUSCODE</p>
+    </div>
+  </footer>`;
+}
+
+function renderLanding() {
+  enter(landingHTML());
+  setupLandingMotion();
+}
+
+function setupLandingMotion() {
+  const reduce = reduceMotion();
+  if (motionOn()) {
+    gsap.fromTo('.hero-in', { y: 26, opacity: 0 }, { y: 0, opacity: 1, duration: 0.9, stagger: 0.12, ease: 'power3.out' });
+  } else {
+    $$('.hero-in').forEach((el) => { el.style.opacity = 1; });
+  }
+
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((en) => { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
+  }, { threshold: 0.12 });
+  $$('.reveal').forEach((r) => io.observe(r));
+  if (reduce) $$('.reveal').forEach((r) => r.classList.add('in'));
+
+  const cio = new IntersectionObserver((entries) => {
+    entries.forEach((en) => { if (en.isIntersecting) { countUp(en.target, Number(en.target.dataset.count)); cio.unobserve(en.target); } });
+  }, { threshold: 0.5 });
+  $$('[data-count]').forEach((c) => cio.observe(c));
+
+  tiltCards(app());
+  magnetize(app());
+}
+
+/* ===== AUTH PAGES ===== */
+function authShell({ title, subtitle, form, footer, brandTitle, brandSub }) {
+  return `
+  <div class="grid min-h-screen lg:grid-cols-12">
+    <aside class="relative hidden overflow-hidden border-r border-line bg-[#050505] p-12 lg:col-span-5 lg:flex lg:flex-col lg:justify-between">
+      <div class="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full bg-red/20 blur-3xl" aria-hidden="true"></div>
+      <div class="pointer-events-none absolute -bottom-32 -left-16 h-80 w-80 rounded-full bg-chrome/10 blur-3xl" aria-hidden="true"></div>
+      <a href="#/landing" class="relative" aria-label="CampusCode home">${logo()}</a>
+      <div class="relative">
+        <p class="mono text-xs font-bold uppercase tracking-widest text-[#FF5A52]">/// hackathon arena</p>
+        <h2 class="display mt-5 text-5xl font-bold leading-[1] chrome-text">${brandTitle}</h2>
+        <p class="mt-6 max-w-sm text-muted">${brandSub}</p>
+      </div>
+      <p class="mono relative text-xs text-muted">Built for students, by students.</p>
+    </aside>
+    <main class="flex min-h-screen items-center justify-center px-5 py-14 sm:px-8 lg:col-span-7">
+      <div class="w-full max-w-md">
+        <a href="#/landing" class="mb-10 inline-flex lg:hidden" aria-label="CampusCode home">${logo()}</a>
+        <h1 class="display text-4xl font-bold tracking-tight">${title}</h1>
+        <p class="mt-2 text-muted">${subtitle}</p>
+        ${form}
+        <p class="mt-8 text-center text-sm text-muted">${footer}</p>
+      </div>
+    </main>
+  </div>`;
+}
+
+function renderLogin() {
+  enter(authShell({
+    title: 'Welcome back', subtitle: 'Sign in to continue to your arena.',
+    form: `
+    <form id="loginForm" novalidate class="mt-9 space-y-6">
+      <div><label for="loginEmail" class="label">Email</label>
+        <input id="loginEmail" name="email" type="email" autocomplete="email" class="field" placeholder="you@college.edu" /></div>
+      <div>
+        <div class="mb-2 flex items-center justify-between">
+          <label for="loginPassword" class="label !mb-0">Password</label>
+          <button type="button" id="forgot" class="text-sm font-semibold text-[#FF5A52] hover:underline">Forgot password?</button>
+        </div>
+        <div class="relative">
+          <input id="loginPassword" name="password" type="password" autocomplete="current-password" class="field pr-12" />
+          <button type="button" data-toggle-pw="loginPassword" aria-label="Show password" class="absolute right-2 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full text-muted hover:bg-raised">${eyeIcon(false)}</button>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-red btn-lg w-full">Sign in</button>
+    </form>`,
+    footer: `New to CampusCode? <a href="#/register" class="font-bold text-[#FF5A52] hover:underline">Create an account</a>`,
+    brandTitle: 'Your campus, your arena.',
+    brandSub: 'Solve challenges, team up with HackMate, validate ideas and ship projects with your classmates.'
+  }));
+  setupPasswordToggles();
+  magnetize(app());
+  $('#forgot').addEventListener('click', () => toast('A reset link has been sent to your college email (demo).'));
+
+  const form = $('#loginForm');
+  const validate = bindValidation(form, {
+    email: (v) => (EMAIL_RE.test(v.trim()) ? '' : 'Enter a valid email address.'),
+    password: (v) => (v.length >= 8 ? '' : 'Password must be at least 8 characters.')
+  });
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (!validate()) return;
+    withLoading(form.querySelector('button[type="submit"]'), 'Signing in…', async () => {
+      setSession(true);
+      toast(`Welcome back, ${firstName()}!`);
+      go('#/dashboard/overview');
+    });
+  });
+}
+
+function renderRegister() {
+  const opts = (list) => list.map((o) => `<option value="${esc(o)}">${esc(o)}</option>`).join('');
+  enter(authShell({
+    title: 'Create your account', subtitle: 'Tell us about your studies. Takes under a minute.',
+    form: `
+    <form id="registerForm" novalidate class="mt-9 grid grid-cols-1 gap-5 sm:grid-cols-2">
+      <div class="sm:col-span-2"><label for="regName" class="label">Full name</label><input id="regName" name="name" type="text" autocomplete="name" class="field" /></div>
+      <div class="sm:col-span-2"><label for="regCollege" class="label">College</label><input id="regCollege" name="college" type="text" autocomplete="organization" class="field" /></div>
+      <div><label for="regBranch" class="label">Branch</label><select id="regBranch" name="branch" class="field"><option value="">Select branch</option>${opts(DATA.branches)}</select></div>
+      <div><label for="regYear" class="label">Year</label><select id="regYear" name="year" class="field"><option value="">Select year</option>${opts(DATA.years)}</select></div>
+      <div class="sm:col-span-2"><label for="regEmail" class="label">Email</label><input id="regEmail" name="email" type="email" autocomplete="email" class="field" /></div>
+      <div class="sm:col-span-2">
+        <label for="regPassword" class="label">Password</label>
+        <div class="relative">
+          <input id="regPassword" name="password" type="password" autocomplete="new-password" class="field pr-12" />
+          <button type="button" data-toggle-pw="regPassword" aria-label="Show password" class="absolute right-2 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full text-muted hover:bg-raised">${eyeIcon(false)}</button>
+        </div>
+        <div aria-live="polite" class="pt-3">
+          <div id="pwBars" class="flex gap-1.5" aria-hidden="true"></div>
+          <p id="pwLabel" class="mono mt-2 text-xs text-muted"></p>
+        </div>
+      </div>
+      <div class="sm:col-span-2"><button type="submit" class="btn btn-red btn-lg w-full">Create account</button></div>
+    </form>`,
+    footer: `Already have an account? <a href="#/login" class="font-bold text-[#FF5A52] hover:underline">Sign in</a>`,
+    brandTitle: 'Start building with your campus.',
+    brandSub: 'Join your branch’s arena. Your team, progress and certificates start the moment you sign up.'
+  }));
+  setupPasswordToggles();
+  magnetize(app());
+
+  const LABELS = ['Too weak', 'Weak', 'Fair', 'Good', 'Strong'];
+  const COLORS = ['bg-red', 'bg-red', 'bg-[#8A8988]', 'bg-chrome', 'bg-white'];
+  const score = (pw) => {
+    if (!pw) return 0;
+    let s = 0;
+    if (pw.length >= 8) s++;
+    if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) s++;
+    if (/\d/.test(pw)) s++;
+    if (/[^A-Za-z0-9]/.test(pw)) s++;
+    return s;
+  };
+  const drawStrength = (pw) => {
+    const s = score(pw);
+    $('#pwBars').innerHTML = [0, 1, 2, 3].map((i) => `<span class="h-2 flex-1 rounded-full transition-colors duration-300 ${i < s ? COLORS[s] : 'bg-raised'}"></span>`).join('');
+    $('#pwLabel').textContent = pw ? `Strength: ${LABELS[s]}` : 'Use 8+ characters with mixed case, numbers or symbols.';
+  };
+  drawStrength('');
+
+  const form = $('#registerForm');
+  const validate = bindValidation(form, {
+    name: (v) => (v.trim().length >= 2 ? '' : 'Enter your full name.'),
+    college: (v) => (v.trim() ? '' : 'Enter your college name.'),
+    branch: (v) => (v ? '' : 'Select your branch.'),
+    year: (v) => (v ? '' : 'Select your year.'),
+    email: (v) => (EMAIL_RE.test(v.trim()) ? '' : 'Enter a valid email address.'),
+    password: (v) => (score(v) >= 2 ? '' : 'Use 8+ characters with mixed case, numbers or symbols.')
+  });
+  form.elements.namedItem('password').addEventListener('input', (e) => drawStrength(e.target.value));
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (!validate()) return;
+    const f = form.elements;
+    withLoading(form.querySelector('button[type="submit"]'), 'Creating account…', async () => {
+      DATA.user = {
+        ...DATA.user,
+        name: f.namedItem('name').value.trim(),
+        college: f.namedItem('college').value.trim(),
+        branch: f.namedItem('branch').value,
+        year: f.namedItem('year').value,
+        email: f.namedItem('email').value.trim()
+      };
+      setSession(true);
+      toast(`Welcome to CampusCode, ${firstName()}!`);
+      go('#/dashboard/overview');
+    });
+  });
+}
+
+/* ===== DASHBOARD SHELL ===== */
+function shellHTML() {
+  const u = DATA.user;
+  return `
+  <aside id="sidebar" class="rail" aria-label="Sidebar">
+    <div class="flex items-center justify-between px-2">
+      <a href="#/dashboard/overview" aria-label="CampusCode dashboard">${logo()}</a>
+      <button type="button" id="closeDrawer" aria-label="Close navigation" class="grid h-9 w-9 place-items-center rounded-full text-muted hover:bg-panel lg:hidden">
+        <i data-lucide="x" class="h-5 w-5" aria-hidden="true"></i>
+      </button>
+    </div>
+    <p class="mono mt-10 px-3 text-[11px] font-bold uppercase tracking-widest text-[#5C5B5E]">Workspace</p>
+    <nav aria-label="Dashboard" class="rail-scroll mt-3 flex-1">
+      <ul class="space-y-1">
+        ${DATA.nav.map((n) => `
+          <li>
+            <a href="#/dashboard/${n.slug}" data-nav="${n.slug}" class="rail-link">
+              <i data-lucide="${n.icon}" class="h-4 w-4 shrink-0" aria-hidden="true"></i>
+              <span>${esc(n.label)}</span>
+              ${n.count ? `<span class="count chip c-red !py-0.5">${n.count}</span>` : ''}
+            </a>
+          </li>`).join('')}
+      </ul>
+    </nav>
+  </aside>
+
+  <div class="min-h-screen lg:pl-[17rem]">
+    <header class="topbar sticky top-0 z-30">
+      <div class="flex h-18 items-center gap-3 px-5 py-4 sm:px-8">
+        <button type="button" id="menuBtn" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false"
+          class="grid h-10 w-10 place-items-center rounded-full border border-line bg-panel lg:hidden">
+          <i data-lucide="menu" class="h-5 w-5" aria-hidden="true"></i>
+        </button>
+        <form role="search" class="relative hidden max-w-md flex-1 md:block" onsubmit="event.preventDefault()">
+          <label for="globalSearch" class="sr-only">Search events, teams and resources</label>
+          <i data-lucide="search" class="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden="true"></i>
+          <input id="globalSearch" type="search" placeholder="Search events, teams, resources…" class="field h-11 !rounded-full pl-11 text-sm" />
+        </form>
+        <div class="ml-auto flex items-center gap-2">
+          <a href="#/dashboard/notifications" aria-label="Notifications" class="relative grid h-11 w-11 place-items-center rounded-full border border-line bg-panel transition hover:border-[#4A4A4F]">
+            <i data-lucide="bell" class="h-5 w-5" aria-hidden="true"></i>
+            <span id="bellCount" class="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-red px-1 text-[10px] font-bold text-white"></span>
+          </a>
+          <div class="relative" id="userWrap">
+            <button type="button" id="userBtn" aria-haspopup="menu" aria-expanded="false" aria-label="Account menu"
+              class="flex items-center gap-2.5 rounded-full border border-line bg-panel p-1 pr-3 transition hover:border-[#4A4A4F]">
+              <span class="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-[#E9E8E7] to-[#CDCBCA] text-sm font-bold text-obsidian">${initials(u.name)}</span>
+              <span class="hidden text-left sm:block">
+                <span class="block text-sm font-semibold leading-tight">${esc(u.name)}</span>
+                <span class="mono block text-[10px] uppercase tracking-wider text-muted">Student</span>
+              </span>
+            </button>
+            <div id="userMenu" role="menu" hidden class="card absolute right-0 mt-3 w-60 !rounded-2xl !p-0 overflow-hidden shadow-[0_24px_50px_-20px_rgba(0,0,0,.95)]">
+              <div class="border-b border-line px-5 py-4">
+                <p class="text-sm font-semibold">${esc(u.name)}</p>
+                <p class="text-xs text-muted">${esc(u.college)} · ${esc(u.branch)}</p>
+              </div>
+              <a href="#/dashboard/profile" role="menuitem" class="flex items-center gap-2 px-5 py-3.5 text-sm font-medium hover:bg-raised"><i data-lucide="user" class="h-4 w-4" aria-hidden="true"></i>Profile</a>
+              <button type="button" id="logoutBtn" role="menuitem" class="flex w-full items-center gap-2 px-5 py-3.5 text-sm font-medium text-[#FF5A52] hover:bg-red/10"><i data-lucide="log-out" class="h-4 w-4" aria-hidden="true"></i>Log out</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main id="main" class="mx-auto max-w-7xl px-5 pb-32 pt-10 sm:px-8 lg:pb-20">
+      <nav aria-label="Breadcrumb" class="mono mb-8 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-muted">
+        <span>CampusCode</span><i data-lucide="chevron-right" class="h-3 w-3" aria-hidden="true"></i>
+        <span>Student</span><i data-lucide="chevron-right" class="h-3 w-3" aria-hidden="true"></i>
+        <span id="crumb" aria-current="page" class="text-chrome">Overview</span>
+      </nav>
+      <div id="page"></div>
+    </main>
+
+    <nav class="tabbar" aria-label="Quick navigation">
+      ${DATA.tabs.map((slug) => {
+        const n = DATA.nav.find((x) => x.slug === slug);
+        return `<a href="#/dashboard/${slug}" data-tab="${slug}"><i data-lucide="${n.icon}" class="h-4 w-4" aria-hidden="true"></i>${esc(n.label.split(' ')[0])}</a>`;
+      }).join('')}
+    </nav>
+  </div>`;
+}
+
+function bindShell() {
+  const sidebar = $('#sidebar');
+  const scrim = $('#scrim');
+  const openDrawer = (open) => {
+    sidebar.classList.toggle('open', open);
+    scrim.hidden = !open;
+    $('#menuBtn').setAttribute('aria-expanded', String(open));
+    if (open) sidebar.querySelector('a')?.focus();
+  };
+  $('#menuBtn').addEventListener('click', () => openDrawer(true));
+  $('#closeDrawer').addEventListener('click', () => openDrawer(false));
+  scrim.addEventListener('click', () => openDrawer(false));
+  sidebar.addEventListener('click', (e) => { if (e.target.closest('a') && innerWidth < 1024) openDrawer(false); });
+
+  const closeMenus = () => { $('#userMenu').hidden = true; $('#userBtn').setAttribute('aria-expanded', 'false'); };
+  $('#userBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const menu = $('#userMenu');
+    const willOpen = menu.hidden;
+    closeMenus();
+    if (willOpen) {
+      menu.hidden = false;
+      $('#userBtn').setAttribute('aria-expanded', 'true');
+      if (motionOn()) gsap.fromTo(menu, { opacity: 0, y: -6, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: 0.22, ease: 'power2.out' });
+    }
+  });
+  $('#logoutBtn').addEventListener('click', logout);
+  document.addEventListener('click', (e) => { if (!$('#userWrap').contains(e.target)) closeMenus(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeMenus(); openDrawer(false); } });
+
+  const unread = DATA.notifications.filter((n) => !n.read).length;
+  const bell = $('#bellCount');
+  bell.textContent = unread;
+  bell.hidden = unread === 0;
+
+  $('#globalSearch').addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const q = e.target.value.trim();
+    if (q) toast(`Searching for “${q}”…`);
+  });
+
+  magnetize(app());
+  shellMounted = true;
+}
+
+/* ===== DASHBOARD PAGES ===== */
+const LABEL = Object.fromEntries(DATA.nav.map((n) => [n.slug, n.label]));
+
+function renderDashboard(slug) {
+  if (!shellMounted) {
+    app().innerHTML = shellHTML();
+    bindShell();
+    refreshIcons();
+    if (motionOn()) gsap.fromTo('#sidebar', { x: -40, opacity: 0 }, { x: 0, opacity: 1, duration: 0.6, ease: 'power3.out', clearProps: 'transform' });
+  }
+  $$('[data-nav], [data-tab]').forEach((a) => {
+    const key = a.dataset.nav || a.dataset.tab;
+    const on = key === slug;
+    a.classList.toggle('active', on);
+    if (a.dataset.nav) {
+      if (on) a.setAttribute('aria-current', 'page');
+      else a.removeAttribute('aria-current');
+    }
+  });
+  $('#crumb').textContent = LABEL[slug];
+  document.title = `${LABEL[slug]} · CampusCode`;
+
+  const from = lastPage;
+  const my = ++pageToken;
+  $('#page').innerHTML = skeleton();
+  refreshIcons();
+  loadPage(slug, my, from);
+}
+
+async function loadPage(slug, my, from) {
+  await sleep(motionOn() ? DATA.config.latencyMs : 100);
+  if (my !== pageToken) return;
+  const page = $('#page');
+
+  if (DATA.config.simulateError) {
+    page.innerHTML = errorBox('We could not load this page. Check your connection and try again.');
+    refreshIcons();
+    $('[data-retry]', page).addEventListener('click', () => renderDashboard(slug));
+    return;
+  }
+
+  page.innerHTML = PAGES[slug]();
+  refreshIcons();
+  bindPage(slug);
+  lastPage = slug;
+  page.querySelector('h1')?.focus({ preventScroll: true });
+
+  if (motionOn()) {
+    // Pages further down the menu enter from the right, higher ones from the left.
+    const dir = from && PAGE_ORDER.indexOf(slug) < PAGE_ORDER.indexOf(from) ? -1 : 1;
+    const x = from ? 70 * dir : 0;
+    gsap.fromTo(page, { opacity: 0, x }, { opacity: 1, x: 0, duration: 0.5, ease: 'power3.out', clearProps: 'transform' });
+    gsap.fromTo(page.children, { y: 14, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, stagger: 0.05, ease: 'power3.out', delay: 0.08, clearProps: 'transform' });
+  }
+}
+
+const header = (kicker, title, sub, actions = '') => `
+  <div class="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <p class="mono text-xs font-bold uppercase tracking-widest text-[#FF5A52]">${kicker}</p>
+      <h1 tabindex="-1" class="display mt-3 text-5xl font-bold leading-[1] tracking-tight outline-none sm:text-6xl chrome-text">${title}</h1>
+      <p class="mt-4 max-w-xl text-muted">${sub}</p>
+    </div>
+    ${actions}
+  </div>`;
+
+/* Overview: bento grid */
+function overviewPage() {
+  const u = DATA.user;
+  const xpPct = Math.round((u.xp / u.xpNext) * 100);
+  const pipeline = DATA.teams.map((t) => `
+    <div class="py-5">
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <p class="font-semibold">${esc(t.name)}</p>
+          <p class="mono mt-1 text-[11px] uppercase tracking-wider text-muted">${esc(t.track)}</p>
+        </div>
+        <span class="chip ${t.tone}">${t.live ? '<span class="dot"></span>' : ''}${esc(t.status)}</span>
+      </div>
+      <div class="mt-4 flex gap-1.5" role="img" aria-label="${esc(t.name)} build: ${t.done} of 10">
+        ${Array.from({ length: 10 }, (_, i) => `<span data-seg class="seg ${i < t.done ? (t.live ? 'on hot' : 'on') : ''}"></span>`).join('')}
+      </div>
+    </div>`).join('');
+
+  const board = [...DATA.leaderboard].sort((a, b) => b.score - a.score).map((t, i) => `
+    <li class="flex items-center gap-4 py-3.5">
+      <span class="mono w-7 text-xs ${i === 0 ? 'text-[#FF5A52]' : 'text-muted'}">0${i + 1}</span>
+      <span class="flex-1 text-sm font-medium">${esc(t.name)}</span>
+      <span class="display font-bold tabular-nums">${t.score}</span>
+    </li>`).join('');
+
+  const activity = DATA.activity.map((a) => `
+    <li class="py-4">
+      <p class="mono text-[11px] uppercase tracking-wider text-muted">${esc(a.time)}</p>
+      <p class="mt-1.5 text-sm"><span class="font-semibold">${esc(a.who)}</span> <span class="text-muted">${esc(a.text)}</span></p>
+    </li>`).join('');
+
+  const milestones = DATA.milestones.map((m, i) => `<div class="flex-1"><div data-seg class="seg ${i < DATA.milestonesDone ? 'on' : ''}" title="${esc(m)}"></div></div>`).join('');
+
+  return `
+  <div class="space-y-6">
+    ${header('Dashboard', `Yo, ${esc(firstName())}.`, 'Here is your hackathon at a glance. Let’s get it.', `<a href="#/dashboard/events" class="btn btn-chrome">Browse events</a>`)}
+
+    <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-12">
+      <article class="card lift card-red xl:col-span-5 tilt">
+        <p class="mono text-[11px] font-bold uppercase tracking-wider text-white/75">${esc(DATA.stats[0].label)}</p>
+        <p class="big-num mt-10 text-white"><span data-count="${DATA.stats[0].value}">0</span><span class="text-3xl">${DATA.stats[0].suffix}</span></p>
+        <p class="mt-4 text-sm text-white/80">${esc(DATA.stats[0].hint)}</p>
+      </article>
+      <article class="card lift xl:col-span-2">
+        <p class="mono text-[11px] font-bold uppercase tracking-wider text-muted">${esc(DATA.stats[1].label)}</p>
+        <p class="big-num mt-10 chrome-text">${DATA.stats[1].prefix}<span data-count="${DATA.stats[1].value}">0</span></p>
+        <p class="mt-4 text-xs text-muted">${esc(DATA.stats[1].hint)}</p>
+      </article>
+      <article class="card lift xl:col-span-2">
+        <p class="mono text-[11px] font-bold uppercase tracking-wider text-muted">${esc(DATA.stats[2].label)}</p>
+        <p class="big-num mt-10 chrome-text"><span data-count="${DATA.stats[2].value}">0</span></p>
+        <p class="mt-4 text-xs text-muted">${esc(DATA.stats[2].hint)}</p>
+      </article>
+      <article class="card lift xl:col-span-3">
+        <p class="mono text-[11px] font-bold uppercase tracking-wider text-muted">${esc(DATA.stats[3].label)}</p>
+        <p class="big-num mt-10 chrome-text"><span data-count="${DATA.stats[3].value}">0</span></p>
+        <p class="mt-4 text-xs text-muted">${esc(DATA.stats[3].hint)}</p>
+      </article>
+
+      <article class="card xl:col-span-7">
+        <div class="mb-2 flex items-center justify-between"><h2 class="display text-2xl font-bold">Team pipeline</h2><span class="chip c-line">Live</span></div>
+        <div class="divide-y divide-line">${pipeline}</div>
+      </article>
+
+      <article class="card card-ink xl:col-span-5">
+        <div class="flex items-center justify-between"><h2 class="display text-2xl font-bold">XP</h2><span class="mono text-xs text-muted">LVL ${u.level}</span></div>
+        <p class="big-num mt-8 chrome-text">${u.xp.toLocaleString()}</p>
+        <p class="mono mt-2 text-xs text-muted">of ${u.xpNext.toLocaleString()} XP</p>
+        <div class="bar mt-7" role="progressbar" aria-label="XP progress" aria-valuenow="${xpPct}" aria-valuemin="0" aria-valuemax="100"><i data-width="${xpPct}" style="width:0%"></i></div>
+        <p class="mt-4 text-sm text-muted">${u.xpNext - u.xp} XP to level ${u.level + 1}.</p>
+      </article>
+
+      <article class="card xl:col-span-4">
+        <div class="mb-3 flex items-center justify-between"><h2 class="display text-2xl font-bold">Leaderboard</h2><a href="#/dashboard/events" class="mono text-[11px] font-bold uppercase text-[#FF5A52] hover:underline">Full view</a></div>
+        <ol class="divide-y divide-line">${board}</ol>
+      </article>
+
+      <article class="card xl:col-span-4">
+        <h2 class="display mb-3 text-2xl font-bold">Your build</h2>
+        <p class="text-sm text-muted">Ideation to submission. Each segment is one milestone.</p>
+        <div class="mt-6 flex gap-2" role="img" aria-label="${DATA.milestonesDone} of ${DATA.milestones.length} milestones complete">${milestones}</div>
+        <p class="mono mt-4 text-[11px] uppercase tracking-wider text-muted">${DATA.milestonesDone} of ${DATA.milestones.length} complete</p>
+        <ul class="mt-5 space-y-2.5 text-sm">
+          ${DATA.milestones.map((m, i) => `<li class="flex items-center gap-2.5 ${i < DATA.milestonesDone ? 'text-chrome font-medium' : 'text-muted'}"><i data-lucide="${i < DATA.milestonesDone ? 'circle-check' : 'circle'}" class="h-4 w-4 ${i < DATA.milestonesDone ? 'text-[#FF5A52]' : ''}" aria-hidden="true"></i>${esc(m)}</li>`).join('')}
+        </ul>
+      </article>
+
+      <article class="card xl:col-span-4">
+        <div class="mb-3 flex items-center justify-between"><h2 class="display text-2xl font-bold">Activity</h2><span class="chip c-line">Sample</span></div>
+        <ul class="divide-y divide-line">${activity}</ul>
+      </article>
+    </div>
+  </div>`;
+}
+
+/* Events */
+let eventFilter = 'All';
+function eventsPage() {
+  return `
+  <div class="space-y-8">
+    ${header('Browse', 'Events', 'Hackathons, sprints and workshops for your branch.')}
+    <div class="flex flex-wrap gap-2" role="group" aria-label="Filter events">
+      ${['All', 'On campus', 'Online'].map((f) => `<button type="button" data-filter-event="${f}" aria-pressed="${f === eventFilter}" class="btn btn-sm ${f === eventFilter ? 'btn-chrome' : 'btn-line'}">${f}</button>`).join('')}
+    </div>
+    <div id="eventGrid" class="grid gap-5 md:grid-cols-2 xl:grid-cols-3"></div>
+  </div>`;
+}
+function renderEventGrid() {
+  const list = DATA.events.filter((e) => eventFilter === 'All' || e.mode === eventFilter);
+  $('#eventGrid').innerHTML = list.length ? list.map((e) => `
+    <article class="card lift tilt flex flex-col">
+      <div class="flex items-start justify-between gap-3">
+        <span class="chip ${e.mode === 'Online' ? 'c-line' : 'c-red'}">${e.mode}</span>
+        <span class="mono text-[11px] font-bold text-muted">${e.seats} SEATS</span>
+      </div>
+      <h2 class="display mt-8 text-2xl font-bold leading-tight">${esc(e.title)}</h2>
+      <p class="mt-3 flex items-center gap-2 text-sm text-muted"><i data-lucide="calendar" class="h-4 w-4" aria-hidden="true"></i>${esc(e.date)}</p>
+      <div class="mt-5 flex flex-wrap gap-1.5">${e.tags.map((t) => `<span class="chip c-line">${esc(t)}</span>`).join('')}</div>
+      <button type="button" data-register="${e.id}" aria-pressed="${e.registered}" class="btn mt-8 ${e.registered ? 'btn-line' : 'btn-red'}">
+        ${e.registered ? '<i data-lucide="check" class="h-4 w-4" aria-hidden="true"></i>Registered' : 'Register'}
+      </button>
+    </article>`).join('')
+    : emptyBox('calendar-x', 'No events here', 'Try another filter.');
+  refreshIcons();
+  tiltCards($('#eventGrid'));
+  magnetize($('#eventGrid'));
+}
+
+/* My Events */
+function myEventsPage() {
+  const mine = DATA.events.filter((e) => e.registered);
+  return `
+  <div class="space-y-8">
+    ${header('Schedule', 'My Events', 'Events you have registered for.')}
+    <div class="grid gap-4">
+      ${mine.length ? mine.map((e, i) => `
+        <article class="card lift flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex items-center gap-5">
+            <span class="display grid h-16 w-16 shrink-0 place-items-center rounded-2xl ${i === 0 ? 'bg-red text-white' : 'bg-chrome text-obsidian'} text-2xl font-bold">${String(i + 1).padStart(2, '0')}</span>
+            <div>
+              <p class="display text-xl font-bold">${esc(e.title)}</p>
+              <p class="mt-1 text-sm text-muted">${esc(e.date)} · ${e.mode}</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="chip ${i === 0 ? 'c-red' : 'c-chrome'}">${i === 0 ? '<span class="dot"></span>Starts soon' : 'Confirmed'}</span>
+            <button type="button" class="btn btn-line btn-sm" data-toast="Event details for ${esc(e.title)} (demo).">Details</button>
+          </div>
+        </article>`).join('')
+        : emptyBox('calendar-check', 'No registrations yet', 'Browse events and register for your first hackathon.', '<a href="#/dashboard/events" class="btn btn-red btn-sm mt-3">Browse events</a>')}
+    </div>
+  </div>`;
+}
+
+/* HackMate AI */
+function hackmatePage() {
+  return `
+  <div class="space-y-8">
+    ${header('AI · Team', 'HackMate AI', 'Describe the skills you need and we will rank the best teammates for your idea.')}
+    <div class="grid gap-6 lg:grid-cols-12">
+      <form id="hmForm" class="card card-ink space-y-6 lg:col-span-4 lg:self-start" novalidate>
+        <div><label for="hmNeed" class="label">What does your team need?</label>
+          <textarea id="hmNeed" name="need" class="field" placeholder="e.g. A backend developer who knows Node and PostgreSQL">Frontend and ML skills for an AI study planner</textarea></div>
+        <div><label for="hmEvent" class="label">Event</label>
+          <select id="hmEvent" class="field">${DATA.events.map((e) => `<option>${esc(e.title)}</option>`).join('')}</select></div>
+        <button type="submit" class="btn btn-red w-full">Find teammates</button>
+      </form>
+      <div class="lg:col-span-8">
+        <div id="hmResults" class="grid gap-4 sm:grid-cols-2" aria-live="polite">${DATA.teammates.map(teammateCard).join('')}</div>
+      </div>
+    </div>
+  </div>`;
+}
+function teammateCard(t) {
+  return `
+  <article class="card lift tilt p-6">
+    <div class="flex items-start justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <span class="display grid h-12 w-12 place-items-center rounded-full bg-chrome text-sm font-bold text-obsidian">${initials(t.name)}</span>
+        <div><p class="font-semibold">${esc(t.name)}</p><p class="mono mt-0.5 text-[11px] uppercase text-muted">${esc(t.role)} · ${esc(t.branch)}</p></div>
+      </div>
+      <span class="chip c-red">${t.match}%</span>
+    </div>
+    <div class="mt-5 flex flex-wrap gap-1.5">${t.skills.map((s) => `<span class="chip c-line">${esc(s)}</span>`).join('')}</div>
+    <button type="button" class="btn btn-line btn-sm mt-6" data-toast="Invite sent to ${esc(t.name)} (demo).">Invite to team</button>
+  </article>`;
+}
+
+/* IdeaCheck AI */
+function ideacheckPage() {
+  return `
+  <div class="space-y-8">
+    ${header('AI · Validate', 'IdeaCheck AI', 'Pressure-test your idea before you spend 48 hours building it.')}
+    <div class="grid gap-6 lg:grid-cols-2">
+      <form id="icForm" class="card space-y-6" novalidate>
+        <div><label for="icIdea" class="label">Describe your idea</label>
+          <textarea id="icIdea" name="idea" class="field min-h-[12rem]" placeholder="Problem, who it helps, and how it works in 3–5 sentences."></textarea></div>
+        <button type="submit" class="btn btn-chrome">Check idea</button>
+      </form>
+      <article id="icResult" class="card" aria-live="polite">
+        ${emptyBox('lightbulb', 'No report yet', 'Submit an idea to see scores for novelty, feasibility and impact.')}
+      </article>
+    </div>
+  </div>`;
+}
+function ideaReport(text) {
+  const words = text.trim().split(/\s+/).length;
+  const hits = ['ai', 'campus', 'student', 'iot', 'sustainable', 'data', 'health', 'mobile'].filter((k) => text.toLowerCase().includes(k)).length;
+  const base = Math.min(words, 60) / 60;
+  const score = (x) => Math.max(40, Math.min(96, Math.round(45 + x * 40 + hits * 3)));
+  const metrics = [
+    { label: 'Novelty', value: score(base) },
+    { label: 'Feasibility in 48h', value: score(1 - base * 0.5) },
+    { label: 'Impact on students', value: score(base + hits * 0.05) }
+  ];
+  const overall = Math.round(metrics.reduce((s, m) => s + m.value, 0) / metrics.length);
+  return `
+    <div class="flex items-center justify-between">
+      <h2 class="display text-2xl font-bold">Report</h2>
+      <span class="chip c-ink">Overall ${overall}/100</span>
+    </div>
+    <div class="mt-8 space-y-6">
+      ${metrics.map((m) => `
+        <div>
+          <div class="mb-2 flex justify-between text-sm"><span class="font-semibold">${m.label}</span><span class="mono text-muted">${m.value}</span></div>
+          <div class="bar" role="progressbar" aria-label="${m.label}" aria-valuenow="${m.value}" aria-valuemin="0" aria-valuemax="100"><i data-width="${m.value}" style="width:0%"></i></div>
+        </div>`).join('')}
+    </div>
+    <p class="mt-8 rounded-2xl border border-line bg-raised p-5 text-sm text-chrome">Tip: ${words < 25 ? 'Add more detail about the user and the main flow. Reviewers score clarity.' : 'Narrow the scope to one core feature for a strong 48-hour demo.'}</p>`;
+}
+
+/* Certificates */
+function certificatesPage() {
+  return `
+  <div class="space-y-8">
+    ${header('Records', 'Certificates', 'Verified records of your participation and courses.')}
+    <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+      ${DATA.certificates.length ? DATA.certificates.map((c, i) => `
+        <article class="card lift tilt flex flex-col ${i === 0 ? 'card-red' : ''}">
+          <span class="grid h-14 w-14 place-items-center rounded-2xl ${i === 0 ? 'bg-white/15' : 'bg-chrome'}"><i data-lucide="award" class="h-6 w-6 ${i === 0 ? 'text-white' : 'text-obsidian'}" aria-hidden="true"></i></span>
+          <h2 class="display mt-8 text-2xl font-bold leading-tight">${esc(c.title)}</h2>
+          <p class="mt-2 text-sm ${i === 0 ? 'text-white/75' : 'text-muted'}">${esc(c.issuer)}</p>
+          <p class="mono mt-6 text-[11px] uppercase tracking-wider ${i === 0 ? 'text-white/65' : 'text-muted'}">${esc(c.id)} · ${esc(c.date)}</p>
+          <button type="button" class="btn ${i === 0 ? 'btn-chrome' : 'btn-line'} btn-sm mt-7 self-start" data-toast="Downloading ${esc(c.id)} (demo).">
+            <i data-lucide="download" class="h-4 w-4" aria-hidden="true"></i>Download
+          </button>
+        </article>`).join('')
+        : emptyBox('award', 'No certificates yet', 'Join an event or finish a course to earn your first one.')}
+    </div>
+  </div>`;
+}
+
+/* Digital Card */
+function digitalCardPage() {
+  const u = DATA.user;
+  const cells = Array.from({ length: 81 }, (_, i) => {
+    const x = i % 9, y = Math.floor(i / 9);
+    const on = (x * 7 + y * 13 + x * y) % 3 !== 0 || (x < 2 && y < 2);
+    return `<span class="${on ? 'bg-obsidian' : ''}"></span>`;
+  }).join('');
+  return `
+  <div class="space-y-8">
+    ${header('Identity', 'Digital Card', 'Share a verified profile card with recruiters and teammates.')}
+    <div class="grid gap-6 lg:grid-cols-12">
+      <article class="tilt card card-ink relative overflow-hidden p-9 lg:col-span-7">
+        <div class="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-red/25 blur-3xl" aria-hidden="true"></div>
+        <div class="relative flex items-start justify-between">
+          ${logo()}
+          <span class="chip c-chrome">Verified</span>
+        </div>
+        <div class="relative mt-16 flex items-end justify-between gap-6">
+          <div>
+            <p class="display text-4xl font-bold chrome-text">${esc(u.name)}</p>
+            <p class="mt-3 text-sm text-muted">${esc(u.branch)}</p>
+            <p class="text-sm text-muted">${esc(u.college)} · ${esc(u.year)}</p>
+            <p class="mono mt-6 text-xs text-[#FF5A52]">@${esc(u.handle)}</p>
+          </div>
+          <div class="grid grid-cols-9 gap-[2px] rounded-2xl bg-chrome p-2.5" style="width:7.5rem;height:7.5rem" aria-hidden="true">${cells}</div>
+        </div>
+      </article>
+
+      <div class="card space-y-6 lg:col-span-5">
+        <div>
+          <h2 class="display text-2xl font-bold">Share your card</h2>
+          <p class="mt-2 text-sm text-muted">Anyone with this link can see your verified profile.</p>
+        </div>
+        <div class="flex gap-2">
+          <input id="cardLink" readonly value="https://campuscode.app/u/${esc(u.handle)}" class="field" aria-label="Public card link" />
+          <button type="button" id="copyLink" class="btn btn-red">Copy</button>
+        </div>
+        <ul class="divide-y divide-line text-sm">
+          <li class="flex justify-between py-4"><span class="text-muted">Skills shown</span><span class="font-medium">Python, C++, PID control</span></li>
+          <li class="flex justify-between py-4"><span class="text-muted">Badges shown</span><span class="font-medium">${DATA.badges.filter((b) => b.earned).length} earned</span></li>
+          <li class="flex justify-between py-4"><span class="text-muted">Certificates shown</span><span class="font-medium">${DATA.certificates.length}</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* RuleBot AI */
+function rulebotPage() {
+  const suggestions = ['Team size?', 'When is the deadline?', 'Can we use AI APIs?', 'Prize details?'];
+  return `
+  <div class="space-y-8">
+    ${header('AI · Rules', 'RuleBot AI', 'Ask anything about the event rulebook. Answers link back to official notices.')}
+    <section class="card flex h-[34rem] flex-col !p-0 overflow-hidden">
+      <div id="chatLog" class="flex-1 space-y-4 overflow-y-auto p-7" aria-live="polite">
+        <div class="flex gap-3">
+          <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-chrome"><i data-lucide="bot" class="h-4 w-4 text-obsidian" aria-hidden="true"></i></span>
+          <p class="max-w-prose rounded-3xl rounded-tl-md bg-raised px-5 py-3.5 text-sm">Hi ${esc(firstName())}. Ask me about team size, deadlines, prizes or allowed tools.</p>
+        </div>
+      </div>
+      <div class="border-t border-line p-5">
+        <div class="mb-4 flex flex-wrap gap-2">
+          ${suggestions.map((s) => `<button type="button" class="btn btn-line btn-sm" data-suggest="${esc(s)}">${esc(s)}</button>`).join('')}
+        </div>
+        <form id="chatForm" class="flex gap-2" novalidate>
+          <label for="chatInput" class="sr-only">Ask RuleBot</label>
+          <input id="chatInput" class="field" placeholder="Ask about the rulebook…" autocomplete="off" />
+          <button type="submit" class="btn btn-red" aria-label="Send"><i data-lucide="send" class="h-4 w-4" aria-hidden="true"></i></button>
+        </form>
+      </div>
+    </section>
+  </div>`;
+}
+function botAnswer(q) {
+  const t = q.toLowerCase();
+  const hit = DATA.rulebot.find((r) => r.match.some((m) => t.includes(m)));
+  return hit ? hit.answer : 'I could not find that in the rulebook. Try asking the organisers in Official Communication.';
+}
+
+/* Student Guide */
+function guidePage() {
+  return `
+  <div class="space-y-8">
+    ${header('Guide', 'Student Guide', 'A simple walkthrough from registration to submission.')}
+    <div class="grid gap-4">
+      ${DATA.guide.map((g, i) => `
+        <details class="card group" ${i === 0 ? 'open' : ''}>
+          <summary class="flex cursor-pointer list-none items-center justify-between gap-4">
+            <span class="flex items-center gap-5"><span class="display text-3xl font-bold text-[#FF5A52]">0${i + 1}</span><span class="display text-2xl font-bold">${esc(g.title)}</span></span>
+            <i data-lucide="chevron-down" class="h-5 w-5 text-muted transition duration-300 group-open:rotate-180" aria-hidden="true"></i>
+          </summary>
+          <p class="mt-6 max-w-prose pl-[3.25rem] text-sm leading-relaxed text-muted">${esc(g.body)}</p>
+        </details>`).join('')}
+    </div>
+  </div>`;
+}
+
+/* Official Communication */
+let commFilter = 'All';
+function communicationPage() {
+  return `
+  <div class="space-y-8">
+    ${header('Official', 'Communication', 'Announcements from organisers. Verified sources only.')}
+    <div class="flex flex-wrap gap-2" role="group" aria-label="Filter announcements">
+      ${['All', 'Official', 'Schedule', 'Rulebook'].map((c) => `<button type="button" data-filter-comm="${c}" aria-pressed="${c === commFilter}" class="btn btn-sm ${c === commFilter ? 'btn-chrome' : 'btn-line'}">${c}</button>`).join('')}
+    </div>
+    <div id="commList" class="grid gap-4 md:grid-cols-2"></div>
+  </div>`;
+}
+function renderComm() {
+  const list = DATA.announcements.filter((a) => commFilter === 'All' || a.cat === commFilter);
+  $('#commList').innerHTML = list.length ? list.map((a) => `
+    <article class="card lift tilt">
+      <div class="flex flex-wrap items-center gap-3"><span class="chip c-red">${esc(a.cat)}</span><span class="mono text-[11px] uppercase tracking-wider text-muted">${esc(a.time)}</span></div>
+      <h2 class="display mt-6 text-2xl font-bold leading-snug">${esc(a.title)}</h2>
+      <p class="mt-3 text-sm leading-relaxed text-muted">${esc(a.body)}</p>
+    </article>`).join('')
+    : emptyBox('send', 'No announcements', 'Nothing in this category yet.');
+  refreshIcons();
+  tiltCards($('#commList'));
+}
+
+/* Notifications */
+function notificationsPage() {
+  return `
+  <div class="space-y-8">
+    ${header('Inbox', 'Notifications', 'Updates on events, teams and your build.', `<button type="button" id="markAll" class="btn btn-line btn-sm">Mark all as read</button>`)}
+    <section class="card !p-0 divide-y divide-line overflow-hidden">
+      ${DATA.notifications.length ? DATA.notifications.map((n) => `
+        <div class="flex items-start gap-4 p-6 ${n.read ? '' : 'bg-red/5'}">
+          <span class="mt-2 h-2.5 w-2.5 shrink-0 rounded-full ${n.read ? 'bg-line' : 'bg-red'}" aria-hidden="true"></span>
+          <div class="flex-1">
+            <p class="text-sm ${n.read ? 'text-muted' : 'font-semibold'}">${esc(n.text)}</p>
+            <p class="mono mt-1.5 text-[11px] uppercase tracking-wider text-muted">${esc(n.time)}</p>
+          </div>
+          ${n.read ? '' : '<span class="chip c-red">New</span>'}
+        </div>`).join('') : emptyBox('bell', 'You are all caught up', 'New updates will appear here.')}
+    </section>
+  </div>`;
+}
+
+/* Help & Support */
+function helpPage() {
+  return `
+  <div class="space-y-8">
+    ${header('Support', 'Help & Support', 'Quick answers, or send us a message.')}
+    <div class="grid gap-6 lg:grid-cols-12">
+      <section class="space-y-3 lg:col-span-7" aria-label="Frequently asked questions">
+        ${DATA.faqs.map((f) => `
+          <details class="card group !p-6">
+            <summary class="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold">${esc(f.q)}<i data-lucide="plus" class="h-4 w-4 text-muted transition duration-300 group-open:rotate-45" aria-hidden="true"></i></summary>
+            <p class="mt-4 text-sm leading-relaxed text-muted">${esc(f.a)}</p>
+          </details>`).join('')}
+      </section>
+      <form id="helpForm" class="card card-ink space-y-6 lg:col-span-5" novalidate>
+        <h2 class="display text-2xl font-bold">Contact support</h2>
+        <div><label for="hpSubject" class="label">Topic</label>
+          <select id="hpSubject" name="subject" class="field">
+            <option value="">Choose a topic</option><option>Account</option><option>Event registration</option><option>Technical issue</option><option>Other</option>
+          </select></div>
+        <div><label for="hpMessage" class="label">Message</label>
+          <textarea id="hpMessage" name="message" class="field" placeholder="Tell us what happened…"></textarea></div>
+        <button type="submit" class="btn btn-red">Send message</button>
+      </form>
+    </div>
+  </div>`;
+}
+
+/* Profile */
+function profilePage() {
+  const u = DATA.user;
+  const pct = Math.round((u.xp / u.xpNext) * 100);
+  const branchOpts = DATA.branches.map((b) => `<option ${b === u.branch ? 'selected' : ''}>${esc(b)}</option>`).join('');
+  const yearOpts = DATA.years.map((y) => `<option ${y === u.year ? 'selected' : ''}>${esc(y)}</option>`).join('');
+  const earned = DATA.badges.filter((b) => b.earned).length;
+  return `
+  <div class="space-y-8">
+    ${header('Account', 'Profile', 'Keep your details current so teammates and recruiters can find you.')}
+    <div class="grid gap-6 lg:grid-cols-12">
+      <article class="card tilt text-center lg:col-span-4">
+        <span id="profAvatar" class="display mx-auto grid h-28 w-28 place-items-center rounded-full bg-gradient-to-br from-[#E9E8E7] to-[#CDCBCA] text-4xl font-bold text-obsidian ring-4 ring-red/60">${initials(u.name)}</span>
+        <h2 class="display mt-6 text-3xl font-bold">${esc(u.name)}</h2>
+        <p class="mt-2 text-sm text-muted">${esc(u.college)} · ${esc(u.branch)}</p>
+        <div class="mt-8 text-left">
+          <div class="mb-2 flex justify-between text-sm"><span class="font-semibold">Level ${u.level}</span><span class="mono text-xs text-muted">${u.xp.toLocaleString()} / ${u.xpNext.toLocaleString()}</span></div>
+          <div class="bar" role="progressbar" aria-label="Level progress" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><i data-width="${pct}" style="width:0%"></i></div>
+        </div>
+      </article>
+
+      <form id="profileForm" novalidate class="card space-y-6 lg:col-span-8">
+        <h2 class="display text-2xl font-bold">Personal details</h2>
+        <div class="grid gap-5 sm:grid-cols-2">
+          <div class="sm:col-span-2"><label for="pfName" class="label">Full name</label><input id="pfName" name="name" class="field" value="${esc(u.name)}" autocomplete="name" /></div>
+          <div class="sm:col-span-2"><label for="pfCollege" class="label">College</label><input id="pfCollege" name="college" class="field" value="${esc(u.college)}" /></div>
+          <div><label for="pfBranch" class="label">Branch</label><select id="pfBranch" name="branch" class="field">${branchOpts}</select></div>
+          <div><label for="pfYear" class="label">Year</label><select id="pfYear" name="year" class="field">${yearOpts}</select></div>
+          <div class="sm:col-span-2"><label for="pfEmail" class="label">Email</label><input id="pfEmail" class="field opacity-60" value="${esc(u.email)}" disabled /><p class="mt-2 text-xs text-muted">Contact support to change your login email.</p></div>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="reset" class="btn btn-line">Discard</button>
+          <button type="submit" class="btn btn-red">Save profile</button>
+        </div>
+      </form>
+    </div>
+
+    <article class="card">
+      <div class="mb-6 flex items-center justify-between"><h2 class="display text-2xl font-bold">Badges</h2><span class="chip c-ink">${earned} of ${DATA.badges.length} earned</span></div>
+      <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        ${DATA.badges.map((b) => `
+          <li class="tilt flex items-center gap-4 rounded-3xl border border-line bg-[#0C0C0D] p-5 ${b.earned ? '' : 'opacity-50'}">
+            <span class="grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${b.earned ? 'bg-red/20 text-[#FF5A52]' : 'bg-raised text-muted'}">
+              <i data-lucide="${b.earned ? b.icon : 'lock'}" class="h-5 w-5" aria-hidden="true"></i>
+            </span>
+            <div><p class="font-semibold">${esc(b.name)}</p><p class="mono mt-1 text-[11px] uppercase text-muted">${b.earned ? 'Earned' : 'Locked'}</p></div>
+          </li>`).join('')}
+      </ul>
+    </article>
+  </div>`;
+}
+
+/* Settings */
+function settingsPage() {
+  const row = (id, label, desc, on) => `
+    <div class="flex items-center justify-between gap-4 py-6">
+      <div><p id="lbl-${id}" class="font-semibold">${label}</p><p class="mt-1 text-sm text-muted">${desc}</p></div>
+      <button type="button" role="switch" aria-checked="${on}" aria-labelledby="lbl-${id}" data-switch="${id}"
+        class="relative inline-flex h-7 w-12 shrink-0 items-center rounded-full bg-raised transition-colors duration-300 aria-[checked=true]:bg-red">
+        <span class="ml-1 inline-block h-5 w-5 rounded-full bg-chrome shadow transition-transform duration-300 aria-[checked=true]:translate-x-5 aria-[checked=true]:bg-white"></span>
+      </button>
+    </div>`;
+  const n = DATA.settings.notifications;
+  return `
+  <div class="max-w-3xl space-y-8">
+    ${header('Preferences', 'Settings', 'Choose what you hear about and how.')}
+    <section class="card">
+      <h2 class="display text-2xl font-bold">Notifications</h2>
+      <div class="mt-2 divide-y divide-line">
+        ${row('sprint', 'Event reminders', 'A nudge 24 hours and 1 hour before your events.', n.sprint)}
+        ${row('digest', 'Weekly digest', 'Monday summary of your progress and team rank.', n.digest)}
+        ${row('mentions', 'Team mentions', 'When a teammate tags you in a project.', n.mentions)}
+        ${row('announcements', 'Announcements', 'Official notices from organisers.', n.announcements)}
+      </div>
+    </section>
+    <div class="flex justify-end"><button type="button" id="saveSettings" class="btn btn-red">Save changes</button></div>
+  </div>`;
+}
+
+const PAGES = {
+  overview: overviewPage,
+  events: eventsPage,
+  'my-events': myEventsPage,
+  hackmate: hackmatePage,
+  ideacheck: ideacheckPage,
+  certificates: certificatesPage,
+  'digital-card': digitalCardPage,
+  rulebot: rulebotPage,
+  'student-guide': guidePage,
+  communication: communicationPage,
+  notifications: notificationsPage,
+  help: helpPage,
+  profile: profilePage,
+  settings: settingsPage
+};
+
+function bindPage(slug) {
+  const page = $('#page');
+  setupPasswordToggles(page);
+  $$('[data-count]', page).forEach((el) => countUp(el, Number(el.dataset.count)));
+  animateBars(page);
+  tiltCards(page);
+  magnetize(page);
+
+  page.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-toast]');
+    if (b) toast(b.dataset.toast);
+  });
+
+  if (slug === 'events') {
+    renderEventGrid();
+    page.addEventListener('click', (e) => {
+      const f = e.target.closest('[data-filter-event]');
+      if (f) {
+        eventFilter = f.dataset.filterEvent;
+        $$('[data-filter-event]', page).forEach((x) => {
+          const on = x.dataset.filterEvent === eventFilter;
+          x.classList.toggle('btn-chrome', on);
+          x.classList.toggle('btn-line', !on);
+          x.setAttribute('aria-pressed', String(on));
+        });
+        renderEventGrid();
+        return;
+      }
+      const reg = e.target.closest('[data-register]');
+      if (reg) {
+        const ev = DATA.events.find((x) => x.id === reg.dataset.register);
+        if (!ev) return;
+        ev.registered = !ev.registered;
+        renderEventGrid();
+        toast(ev.registered ? `Registered for ${ev.title}.` : `Removed ${ev.title}.`);
+      }
+    });
+  }
+
+  if (slug === 'communication') {
+    renderComm();
+    page.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-filter-comm]');
+      if (!b) return;
+      commFilter = b.dataset.filterComm;
+      $$('[data-filter-comm]', page).forEach((x) => {
+        const on = x.dataset.filterComm === commFilter;
+        x.classList.toggle('btn-chrome', on);
+        x.classList.toggle('btn-line', !on);
+        x.setAttribute('aria-pressed', String(on));
+      });
+      renderComm();
+    });
+  }
+
+  if (slug === 'hackmate') {
+    $('#hmForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      withLoading(e.target.querySelector('button[type="submit"]'), 'Finding…', async () => {
+        const ranked = [...DATA.teammates].sort((a, b) => b.match - a.match);
+        $('#hmResults').innerHTML = ranked.map(teammateCard).join('');
+        refreshIcons();
+        tiltCards($('#hmResults'));
+        toast('Matches updated for your team.');
+      });
+    });
+  }
+
+  if (slug === 'ideacheck') {
+    $('#icForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const text = $('#icIdea').value.trim();
+      if (text.length < 20) { setFieldError($('#icIdea'), 'Add at least 20 characters so we can review it.'); return; }
+      setFieldError($('#icIdea'), '');
+      withLoading(e.target.querySelector('button[type="submit"]'), 'Analysing…', async () => {
+        const box = $('#icResult');
+        box.innerHTML = ideaReport(text);
+        refreshIcons();
+        animateBars(box);
+      });
+    });
+  }
+
+  if (slug === 'rulebot') bindRulebot(page);
+
+  if (slug === 'notifications') {
+    $('#markAll').addEventListener('click', () => {
+      DATA.notifications.forEach((n) => { n.read = true; });
+      const bell = $('#bellCount');
+      if (bell) bell.hidden = true;
+      page.innerHTML = notificationsPage();
+      refreshIcons();
+      toast('All notifications marked as read.');
+    });
+  }
+
+  if (slug === 'help') {
+    const form = $('#helpForm');
+    const validate = bindValidation(form, {
+      subject: (v) => (v ? '' : 'Choose a topic.'),
+      message: (v) => (v.trim().length >= 10 ? '' : 'Message must be at least 10 characters.')
+    });
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!validate()) return;
+      form.reset();
+      toast('Message sent. We will reply within 24 hours.');
+    });
+  }
+
+  if (slug === 'profile') {
+    const form = $('#profileForm');
+    const validate = bindValidation(form, {
+      name: (v) => (v.trim().length >= 2 ? '' : 'Enter your full name.'),
+      college: (v) => (v.trim() ? '' : 'Enter your college name.'),
+      branch: (v) => (v ? '' : 'Select your branch.'),
+      year: (v) => (v ? '' : 'Select your year.')
+    });
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!validate()) return;
+      const f = form.elements;
+      DATA.user = { ...DATA.user, name: f.namedItem('name').value.trim(), college: f.namedItem('college').value.trim(), branch: f.namedItem('branch').value, year: f.namedItem('year').value };
+      $('#profAvatar').textContent = initials(DATA.user.name);
+      toast('Profile saved.');
+    });
+  }
+
+  if (slug === 'digital-card') {
+    $('#copyLink').addEventListener('click', async () => {
+      const input = $('#cardLink');
+      try { await navigator.clipboard.writeText(input.value); toast('Card link copied.'); }
+      catch (err) { input.select(); toast('Press Ctrl+C to copy the link.', 'error'); }
+    });
+  }
+
+  if (slug === 'settings') {
+    page.addEventListener('click', (e) => {
+      const sw = e.target.closest('[data-switch]');
+      if (sw) sw.setAttribute('aria-checked', String(sw.getAttribute('aria-checked') !== 'true'));
+      if (e.target.closest('#saveSettings')) {
+        $$('[data-switch]', page).forEach((s) => { DATA.settings.notifications[s.dataset.switch] = s.getAttribute('aria-checked') === 'true'; });
+        toast('Settings saved.');
+      }
+    });
+  }
+}
+
+function bindRulebot(page) {
+  const log = $('#chatLog');
+  const add = (who, text) => {
+    const row = document.createElement('div');
+    row.className = `flex gap-3 ${who === 'me' ? 'justify-end' : ''}`;
+    row.innerHTML = who === 'me'
+      ? `<p class="max-w-prose rounded-3xl rounded-tr-md bg-red px-5 py-3.5 text-sm text-white">${esc(text)}</p>`
+      : `<span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-chrome"><i data-lucide="bot" class="h-4 w-4 text-obsidian" aria-hidden="true"></i></span><p class="max-w-prose rounded-3xl rounded-tl-md bg-raised px-5 py-3.5 text-sm">${esc(text)}</p>`;
+    log.appendChild(row);
+    refreshIcons();
+    if (motionOn()) gsap.fromTo(row, { y: 8, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, ease: 'power2.out' });
+    log.scrollTop = log.scrollHeight;
+  };
+  const ask = async (q) => {
+    if (!q.trim()) return;
+    add('me', q);
+    const typing = document.createElement('p');
+    typing.className = 'mono text-xs text-muted';
+    typing.textContent = 'RuleBot is typing…';
+    log.appendChild(typing);
+    await sleep(reduceMotion() ? 0 : 600);
+    typing.remove();
+    add('bot', botAnswer(q));
+  };
+  $('#chatForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const input = $('#chatInput');
+    const q = input.value;
+    input.value = '';
+    ask(q);
+  });
+  page.addEventListener('click', (e) => {
+    const s = e.target.closest('[data-suggest]');
+    if (s) ask(s.dataset.suggest);
+  });
+}
+
+/* ===== FX ===== */
+function initCursorGlow() {
+  const glow = $('#cursorGlow');
+  if (!glow || reduceMotion() || matchMedia('(hover: none)').matches || !window.gsap) return;
+  const xTo = gsap.quickTo(glow, 'x', { duration: 0.6, ease: 'power3' });
+  const yTo = gsap.quickTo(glow, 'y', { duration: 0.6, ease: 'power3' });
+  window.addEventListener('pointermove', (e) => { xTo(e.clientX); yTo(e.clientY); });
+}
+
+/* ===== INIT ===== */
+document.addEventListener('DOMContentLoaded', () => {
+  initCursorGlow();
+  window.addEventListener('hashchange', route);
+  route();
+});
+</script>
+</body>
+</html>
